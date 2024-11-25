@@ -283,6 +283,19 @@ unsigned int sbi_hart_mhpm_bits(struct sbi_scratch *scratch)
 	return hfeatures->mhpm_bits;
 }
 
+unsigned int sbi_hart_has_smmtt_mode(struct sbi_scratch *scratch,
+				     smmtt_mode mode)
+{
+	struct sbi_hart_features *hfeatures =
+		sbi_scratch_offset_ptr(scratch, hart_features_offset);
+
+	if (!sbi_hart_has_extension(scratch, SBI_HART_EXT_SMMTT)) {
+		return 0;
+	}
+
+	return __test_bit(mode, hfeatures->smmtt_supported_modes);
+}
+
 /*
  * Returns Smepmp flags for a given domain and region based on permissions.
  */
@@ -680,6 +693,7 @@ const struct sbi_hart_ext_data sbi_hart_ext[] = {
 	__SBI_HART_EXT_DATA(ssccfg, SBI_HART_EXT_SSCCFG),
 	__SBI_HART_EXT_DATA(svade, SBI_HART_EXT_SVADE),
 	__SBI_HART_EXT_DATA(svadu, SBI_HART_EXT_SVADU),
+	__SBI_HART_EXT_DATA(smmtt, SBI_HART_EXT_SMMTT),
 };
 
 _Static_assert(SBI_HART_EXT_MAX == array_size(sbi_hart_ext),

@@ -14,6 +14,7 @@
 #include <sbi/sbi_types.h>
 #include <sbi/sbi_hartmask.h>
 #include <sbi/sbi_domain_context.h>
+#include <sbi/sbi_hart.h>
 
 struct sbi_scratch;
 
@@ -23,6 +24,14 @@ enum sbi_domain_access {
 	SBI_DOMAIN_WRITE = (1UL << 1),
 	SBI_DOMAIN_EXECUTE = (1UL << 2),
 	SBI_DOMAIN_MMIO = (1UL << 3)
+};
+
+/** Domain isolation types */
+enum sbi_isolation_method {
+	SBI_ISOLATION_UNKNOWN = 0,
+	SBI_ISOLATION_PMP,
+	SBI_ISOLATION_SMEPMP,
+	SBI_ISOLATION_SMMTT,
 };
 
 /** Representation of OpenSBI domain memory region */
@@ -198,6 +207,12 @@ struct sbi_domain {
 	bool system_suspend_allowed;
 	/** Identifies whether to include the firmware region */
 	bool fw_region_inited;
+	/** Current SMMTT mode */
+	smmtt_mode smmtt_mode;
+	/** SMMTT base table */
+	void *mtt;
+	/** Current isolation mode */
+	enum sbi_isolation_method isol_mode;
 };
 
 /** The root domain instance */
