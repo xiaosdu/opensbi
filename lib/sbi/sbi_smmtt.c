@@ -27,6 +27,7 @@
 	((size >= region) && !(base % region))
 
 static struct sbi_heap_control *smmtt_hpctrl = NULL;
+static uint64_t smmtt_table_base, smmtt_table_size;
 
 #define mttl3_size 1024 * 8
 #define mttl2_size 0x200000 * 8
@@ -78,9 +79,9 @@ static int get_mode_info(smmtt_mode mode, int *levels)
 
 /* SMMTT Updates */
 
-static inline uint64_t mttl2_1g_type_from_attr(unsigned long attr) {
-	if (attr & SBI_DOMAIN_MEMREGION_SU_READABLE) {
-		if (attr & SBI_DOMAIN_MEMREGION_SU_WRITABLE) {
+static inline uint64_t mttl2_1g_type_from_flag(unsigned long flag) {
+	if (flag & SBI_DOMAIN_MEMREGION_SU_READABLE) {
+		if (flag & SBI_DOMAIN_MEMREGION_SU_WRITABLE) {
 			return MTT_L2_1G_ALLOW_RWX;
 		} else {
 			return MTT_L2_1G_ALLOW_RX;
@@ -90,10 +91,10 @@ static inline uint64_t mttl2_1g_type_from_attr(unsigned long attr) {
 	}
 }
 
-static int smmtt_add_region_mttl2_1g(mttl2_entry *entry, unsigned long attr)
+static int smmtt_add_region_mttl2_1g(mttl2_entry *entry, unsigned long flag)
 {
 	// Ensure we're not trying to change the type of this mttl2 entry
-	smmtt_type type = mttl2_1g_type_from_attr(attr);
+	smmtt_type type = mttl2_1g_type_from_flag(flag);
 	MTTL2_FIELD_ENSURE_EQUAL(entry, type, type);
 
 	// Ensure info and zero fields are set to zero
@@ -102,10 +103,10 @@ static int smmtt_add_region_mttl2_1g(mttl2_entry *entry, unsigned long attr)
 	return SBI_OK;
 }
 
-static inline mttl2_2m_pages mttl2_2m_perms_from_attr(unsigned long attr)
+static inline mttl2_2m_pages mttl2_2m_perms_from_flag(unsigned long flag)
 {
-	if (attr & SBI_DOMAIN_MEMREGION_SU_READABLE) {
-		if (attr & SBI_DOMAIN_MEMREGION_SU_WRITABLE) {
+	if (flag & SBI_DOMAIN_MEMREGION_SU_READABLE) {
+		if (flag & SBI_DOMAIN_MEMREGION_SU_WRITABLE) {
 			return MTT_L2_2M_PAGES_ALLOW_RWX;
 		} else {
 			return MTT_L2_2M_PAGES_ALLOW_RX;
@@ -117,7 +118,7 @@ static inline mttl2_2m_pages mttl2_2m_perms_from_attr(unsigned long attr)
 }
 
 static int smmtt_add_region_mttl2_2m(mttl2_entry *entry, unsigned long addr,
-				     unsigned long attr)
+				     unsigned long flag)
 {
 	uintptr_t offset;
 	uint32_t info, perms, field;
@@ -135,7 +136,7 @@ static int smmtt_add_region_mttl2_2m(mttl2_entry *entry, unsigned long addr,
 	ENSURE_ZERO(EXTRACT_FIELD(entry->info, field));
 
 	// Set the new permissions
-	perms = mttl2_2m_perms_from_attr(attr);
+	perms = mttl2_2m_perms_from_flag(flag);
 	info = INSERT_FIELD(info, field, perms);
 	entry->info = info;
 
@@ -175,10 +176,10 @@ static inline mttl1_entry *get_mttl1(mttl2_entry *entry)
 	return mttl1;
 }
 
-static inline mttl1_perms mttl1_perms_from_attr(unsigned long attr)
+static inline mttl1_perms mttl1_perms_from_flag(unsigned long flag)
 {
-	if (attr & SBI_DOMAIN_MEMREGION_SU_READABLE) {
-		if (attr & SBI_DOMAIN_MEMREGION_SU_WRITABLE) {
+	if (flag & SBI_DOMAIN_MEMREGION_SU_READABLE) {
+		if (flag & SBI_DOMAIN_MEMREGION_SU_WRITABLE) {
 			return MTT_L1_ALLOW_RWX;
 		} else {
 			return MTT_L1_ALLOW_RX;
@@ -189,7 +190,7 @@ static inline mttl1_perms mttl1_perms_from_attr(unsigned long attr)
 }
 
 static int smmtt_add_region_mttl1(mttl2_entry *entry, unsigned long addr,
-				  unsigned long attr)
+				  unsigned long flag)
 {
 	uintptr_t idx, offset;
 	uint64_t field;
@@ -218,14 +219,14 @@ static int smmtt_add_region_mttl1(mttl2_entry *entry, unsigned long addr,
 	ENSURE_ZERO(EXTRACT_FIELD(mttl1[idx], field));
 
 	// Set the new permissions
-	perms = mttl1_perms_from_attr(attr);
+	perms = mttl1_perms_from_flag(flag);
 	mttl1[idx] = INSERT_FIELD(mttl1[idx], field, perms);
 	return SBI_OK;
 }
 
 
 static int smmtt_add_region_mttl2(mttl2_entry *l2_table, unsigned long addr,
-				  unsigned long size, unsigned long attr)
+				  unsigned long size, unsigned long flag)
 {
 	int rc, i;
 	uintptr_t idx;
@@ -238,7 +239,7 @@ static int smmtt_add_region_mttl2(mttl2_entry *l2_table, unsigned long addr,
 
 		if (FITS(addr, size, GiB)) {
 			for (i = 0; i < 32; i++) {
-				rc = smmtt_add_region_mttl2_1g(entry + i, attr);
+				rc = smmtt_add_region_mttl2_1g(entry + i, flag);
 				if (rc < 0) {
 					return rc;
 				}
@@ -247,7 +248,7 @@ static int smmtt_add_region_mttl2(mttl2_entry *l2_table, unsigned long addr,
 			size -= GiB;
 			addr += GiB;
 		} else if (FITS(addr, size, (2 * MiB))) {
-			rc = smmtt_add_region_mttl2_2m(entry, addr, attr);
+			rc = smmtt_add_region_mttl2_2m(entry, addr, flag);
 			if (rc < 0) {
 				return rc;
 			}
@@ -255,7 +256,7 @@ static int smmtt_add_region_mttl2(mttl2_entry *l2_table, unsigned long addr,
 			size -= (2 * MiB);
 			addr += (2 * MiB);
 		} else {
-			rc = smmtt_add_region_mttl1(entry, addr, attr);
+			rc = smmtt_add_region_mttl1(entry, addr, flag);
 			if (rc < 0) {
 				return rc;
 			}
@@ -270,7 +271,7 @@ static int smmtt_add_region_mttl2(mttl2_entry *l2_table, unsigned long addr,
 
 #if __riscv_xlen == 64
 static int smmtt_add_region_mttl3(mttl3_entry *l3_table, unsigned long addr,
-				  unsigned long size, unsigned long attr)
+				  unsigned long size, unsigned long flag)
 {
 	unsigned long ppn;
 	mttl2_entry *mttl2;
@@ -290,7 +291,7 @@ static int smmtt_add_region_mttl3(mttl3_entry *l3_table, unsigned long addr,
 		return SBI_ENOMEM;
 	}
 
-	return smmtt_add_region_mttl2(mttl2, addr, size, attr);
+	return smmtt_add_region_mttl2(mttl2, addr, size, flag);
 }
 #endif
 
@@ -298,8 +299,8 @@ static int smmtt_add_region_mttl3(mttl3_entry *l3_table, unsigned long addr,
 
 static int initialize_mtt(struct sbi_domain *dom, struct sbi_scratch *scratch)
 {
-	int rc, levels;
-	struct sbi_memregion *reg;
+	int rc, levels, size;
+	struct sbi_domain_memregion *reg;
 
 	if (!dom->mtt) {
 		// Assign the default SMMTT mode if this domain does not
@@ -313,7 +314,7 @@ static int initialize_mtt(struct sbi_domain *dom, struct sbi_scratch *scratch)
 		}
 
 		// Allocate an appropriately sized MTT
-		rc = get_smmtt_mode_info(dom->smmtt_mode, &levels);
+		rc = get_mode_info(dom->smmtt_mode, &levels);
 		if (rc < 0) {
 			return rc;
 		}
@@ -321,7 +322,7 @@ static int initialize_mtt(struct sbi_domain *dom, struct sbi_scratch *scratch)
 #if __riscv_xlen == 64
 		if (levels == 3) {
 			dom->mtt = sbi_aligned_alloc_from(smmtt_hpctrl,
-							  MTTL3_SIZE, MTTL3_SIZE);
+							  mttl3_size, mttl3_size);
 		}
 #endif
 		if (levels == 2) {
@@ -338,17 +339,17 @@ static int initialize_mtt(struct sbi_domain *dom, struct sbi_scratch *scratch)
 			if (!(reg->flags & SBI_DOMAIN_MEMREGION_SU_RWX)) {
 				continue;
 			}
-
+            size = 2 ^ (reg->order);
 #if __riscv_xlen == 64
 			if (levels == 3) {
 				smmtt_add_region_mttl3(dom->mtt, reg->base,
-						       reg->size, reg->flags);
+						       size, reg->flags);
 			}
 #endif
 
 			if (levels == 2) {
 				smmtt_add_region_mttl2(dom->mtt, reg->base,
-						       reg->size, reg->flags);
+						       size, reg->flags);
 			}
 		}
 	}

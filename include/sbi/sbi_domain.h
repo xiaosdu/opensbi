@@ -349,4 +349,6 @@ int sbi_domain_finalize(struct sbi_scratch *scratch, u32 cold_hartid);
 /** Initialize domains */
 int sbi_domain_init(struct sbi_scratch *scratch, u32 cold_hartid);
 
+int sanitize_domain(struct sbi_domain *dom);
+
 #endif

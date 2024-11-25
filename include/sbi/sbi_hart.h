@@ -140,6 +140,8 @@ bool sbi_hart_has_extension(struct sbi_scratch *scratch,
 			    enum sbi_hart_extensions ext);
 void sbi_hart_get_extensions_str(struct sbi_scratch *scratch,
 				 char *extension_str, int nestr);
+unsigned int sbi_hart_has_smmtt_mode(struct sbi_scratch *scratch,
+				     smmtt_mode mode);
 
 void __attribute__((noreturn)) sbi_hart_hang(void);
 

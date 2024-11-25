@@ -284,7 +284,7 @@ static void clear_region(struct sbi_domain_memregion* reg)
 	sbi_memset(reg, 0x0, sizeof(*reg));
 }
 
-static int sanitize_domain(struct sbi_domain *dom)
+int sanitize_domain(struct sbi_domain *dom)
 {
 	u32 i, j, count;
 	bool is_covered;
