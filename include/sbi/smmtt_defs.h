@@ -1,4 +1,5 @@
-
+#ifndef __SMMTT_DEFS_H__
+#define __SMMTT_DEFS_H__
 #include <sbi/sbi_types.h>
 /* SMMTT Modes */
 
@@ -80,3 +81,4 @@ typedef union {
     mttl2_entry mttl2;
     mttl1_entry mttl1;
 } mtt_entry;
+#endif

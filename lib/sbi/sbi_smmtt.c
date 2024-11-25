@@ -356,3 +356,41 @@ static int initialize_mtt(struct sbi_domain *dom, struct sbi_scratch *scratch)
 
 	return SBI_OK;
 }
+
+int sbi_hart_smmtt_configure(struct sbi_scratch *scratch)
+{
+	int rc;
+	unsigned int pmp_count;
+	struct sbi_domain *dom = sbi_domain_thishart_ptr();
+
+	rc = sbi_memregion_sanitize(dom, SBI_ISOLATION_SMMTT);
+	if (rc < 0) {
+		return rc;
+	}
+
+	/* Ensure table is rendered */
+	rc = initialize_mtt(dom, scratch);
+	if (rc < 0) {
+		return rc;
+	}
+
+	/* Install table and PMP */
+
+	// For PMP, we allow access to everything except for the SMMTT
+	// tables (disabled by highest priority register).
+	pmp_count = sbi_hart_pmp_count(scratch);
+	pmp_set(pmp_count - 1, PMP_R | PMP_W | PMP_X, 0, __riscv_xlen);
+	pmp_set(0, 0, smmtt_table_base, log2roundup(smmtt_table_size));
+
+	// For SMMTT, we only selectively enable access as specified
+	// by the domain configuration
+	mttp_set(dom->smmtt_mode, 0, ((uintptr_t)dom->mtt) >> PAGE_SHIFT);
+
+	// Both PMP and SMMTT checks apply for each access, and the final
+	// permissions are the logical and of the two checks. Therefore,
+	// unprivileged code can definitely never access the SMMTT tables
+	// because of the PMP configuration. Unprivileged code can also not
+	// access anything besides what SMMTT explicitly enables.
+
+	return 0;
+}
