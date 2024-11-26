@@ -299,7 +299,7 @@ static int smmtt_add_region_mttl3(mttl3_entry *l3_table, unsigned long addr,
 
 static int initialize_mtt(struct sbi_domain *dom, struct sbi_scratch *scratch)
 {
-	int rc, levels, size;
+	int rc, levels;
 	struct sbi_domain_memregion *reg;
 
 	if (!dom->mtt) {
@@ -339,17 +339,16 @@ static int initialize_mtt(struct sbi_domain *dom, struct sbi_scratch *scratch)
 			if (!(reg->flags & SBI_DOMAIN_MEMREGION_SU_RWX)) {
 				continue;
 			}
-            size = 2 ^ (reg->order);
 #if __riscv_xlen == 64
 			if (levels == 3) {
 				smmtt_add_region_mttl3(dom->mtt, reg->base,
-						       size, reg->flags);
+						       reg->size, reg->flags);
 			}
 #endif
 
 			if (levels == 2) {
 				smmtt_add_region_mttl2(dom->mtt, reg->base,
-						       size, reg->flags);
+						       reg->size, reg->flags);
 			}
 		}
 	}

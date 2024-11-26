@@ -190,6 +190,55 @@ static void memregion_sanitize_smmtt(struct sbi_domain_memregion *reg)
 	reg->size = ROUNDUP(reg->size, PAGE_SIZE);
 }
 
+static bool is_region_valid_pmp(const struct sbi_domain_memregion *reg)
+{
+	unsigned int order = log2roundup(reg->size);
+	if (order < 3 || __riscv_xlen < order)
+		return false;
+
+	if (order == __riscv_xlen && reg->base != 0)
+		return false;
+
+	if (order < __riscv_xlen && (reg->base & (BIT(order) - 1)))
+		return false;
+
+	return true;
+}
+
+static bool is_region_valid_smmtt(const struct sbi_domain_memregion *reg)
+{
+	if (reg->base % PAGE_SIZE != 0)
+		return false;
+
+	if (reg->size % PAGE_SIZE != 0)
+		return false;
+
+	return true;
+}
+
+/* Check if region complies with constraints */
+static bool is_region_valid(const struct sbi_memregion *reg,
+			    enum sbi_isolation_method type)
+{
+	switch(type) {
+	case SBI_ISOLATION_UNKNOWN:
+		break;
+
+	case SBI_ISOLATION_PMP:
+	case SBI_ISOLATION_SMEPMP:
+		return is_region_valid_pmp(reg);
+
+	case SBI_ISOLATION_SMMTT:
+		return is_region_valid_smmtt(reg);
+
+	default:
+		return false;
+	}
+
+	return true;
+}
+
+
 static int memregion_sanitize(struct sbi_domain *dom,
 			      struct sbi_domain_memregion *reg,
 			      enum sbi_isolation_method type)
@@ -313,4 +362,45 @@ bool sbi_domain_check_addr_range(const struct sbi_domain *dom,
 	}
 
 	return true;
+}
+
+
+void sbi_domain_dump_memregions(const struct sbi_domain *dom, const char *suffix)
+{
+	unsigned long rstart, rend;
+	struct sbi_domain_memregion *reg;
+	int i = 0, k;
+
+	sbi_domain_for_each_memregion(dom, reg) {
+		rstart = memregion_start(reg);
+		rend = memregion_end(reg);
+
+		sbi_printf("Domain%d Region%02d    %s: 0x%" PRILX "-0x%" PRILX " ",
+			   dom->index, i, suffix, rstart, rend);
+
+		k = 0;
+
+		sbi_printf("M: ");
+		if (reg->flags & SBI_DOMAIN_MEMREGION_MMIO)
+			sbi_printf("%cI", (k++) ? ',' : '(');
+		if (reg->flags & SBI_DOMAIN_MEMREGION_M_READABLE)
+			sbi_printf("%cR", (k++) ? ',' : '(');
+		if (reg->flags & SBI_DOMAIN_MEMREGION_M_WRITABLE)
+			sbi_printf("%cW", (k++) ? ',' : '(');
+		if (reg->flags & SBI_DOMAIN_MEMREGION_M_EXECUTABLE)
+			sbi_printf("%cX", (k++) ? ',' : '(');
+		sbi_printf("%s ", (k++) ? ")" : "()");
+
+		k = 0;
+		sbi_printf("S/U: ");
+		if (reg->flags & SBI_DOMAIN_MEMREGION_SU_READABLE)
+			sbi_printf("%cR", (k++) ? ',' : '(');
+		if (reg->flags & SBI_DOMAIN_MEMREGION_SU_WRITABLE)
+			sbi_printf("%cW", (k++) ? ',' : '(');
+		if (reg->flags & SBI_DOMAIN_MEMREGION_SU_EXECUTABLE)
+			sbi_printf("%cX", (k++) ? ',' : '(');
+		sbi_printf("%s\n", (k++) ? ")" : "()");
+
+		i++;
+	}
 }
