@@ -394,3 +394,54 @@ int sbi_hart_smmtt_configure(struct sbi_scratch *scratch)
 	return 0;
 }
 
+static int setup_table_memory()
+{
+	const void *fdt;
+	int namelen, ret;
+	int reserved_node, table_node;
+	const char *name;
+
+	// Look for the smmtt-tables reserved memory node
+	fdt	      = fdt_get_address();
+	reserved_node = fdt_path_offset(fdt, "/reserved-memory");
+	if (reserved_node < 0) {
+		return SBI_ENOMEM;
+	}
+
+	fdt_for_each_subnode(table_node, fdt, reserved_node)
+	{
+		name = fdt_get_name(fdt, table_node, &namelen);
+		if (name) {
+			namelen = strlen("smmtt-tables");
+			if (strncmp(name, "smmtt-tables", namelen) == 0) {
+				break;
+			}
+		}
+	}
+
+	if (table_node == -FDT_ERR_NOTFOUND) {
+		return SBI_ENOMEM;
+	}
+
+	// Extract base and size
+	ret = fdt_get_node_addr_size(fdt, table_node, 0, &smmtt_table_base,
+				     &smmtt_table_size);
+	if (ret < 0) {
+		return ret;
+	}
+
+	// Ensure NAPOT so we can later fit this in a single PMP register
+	if ((smmtt_table_size & (smmtt_table_size - 1)) != 0) {
+		return SBI_EINVAL;
+	}
+
+	if ((smmtt_table_base & (smmtt_table_size - 1)) != 0) {
+		return SBI_EINVAL;
+	}
+
+	// Initialize the SMMTT table heap
+	sbi_heap_alloc_new(&smmtt_hpctrl);
+	sbi_heap_init_new(smmtt_hpctrl, smmtt_table_base, smmtt_table_size);
+
+	return SBI_OK;
+}
