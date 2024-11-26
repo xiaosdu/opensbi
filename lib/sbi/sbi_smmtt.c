@@ -393,3 +393,4 @@ int sbi_hart_smmtt_configure(struct sbi_scratch *scratch)
 
 	return 0;
 }
+

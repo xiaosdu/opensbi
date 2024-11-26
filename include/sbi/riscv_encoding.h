@@ -739,6 +739,9 @@
 #define CSR_MSTATEEN3			0x30F
 #define CSR_MSTATEEN3H			0x31F
 
+/* Supervisor domains extension registers */
+#define CSR_MTTP			0x3F0
+
 /* Machine-Level High-Half CSRs (AIA) */
 #define CSR_MIDELEGH			0x313
 #define CSR_MIEH			0x314
