@@ -163,7 +163,7 @@ void sbi_domain_memregion_init(unsigned long addr,
  * @param dom the domain to sanitize
  * @param type the isolation type to apply
  */
-int sbi_memregion_sanitize(struct sbi_domain *dom,
+int sbi_domain_memregion_sanitize(struct sbi_domain *dom,
 			   enum sbi_isolation_method type);
 
 /**

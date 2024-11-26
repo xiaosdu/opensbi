@@ -362,7 +362,7 @@ int sbi_hart_smmtt_configure(struct sbi_scratch *scratch)
 	unsigned int pmp_count;
 	struct sbi_domain *dom = sbi_domain_thishart_ptr();
 
-	rc = sbi_memregion_sanitize(dom, SBI_ISOLATION_SMMTT);
+	rc = sbi_domain_memregion_sanitize(dom, SBI_ISOLATION_SMMTT);
 	if (rc < 0) {
 		return rc;
 	}
@@ -442,6 +442,124 @@ static int setup_table_memory()
 	// Initialize the SMMTT table heap
 	sbi_heap_alloc_new(&smmtt_hpctrl);
 	sbi_heap_init_new(smmtt_hpctrl, smmtt_table_base, smmtt_table_size);
+
+	return SBI_OK;
+}
+
+#define SECURE_DEVICE(status, sstatus) \
+	(!strcmp(status, "disabled") && !strcmp(sstatus, "okay"))
+
+#define NONSECURE_DEVICE(status, sstatus) \
+	(!strcmp(status, "okay") && !strcmp(sstatus, "disabled"))
+
+#define DISABLED_DEVICE(status, sstatus) \
+	(!strcmp(status, "disabled") && !strcmp(sstatus, "disabled"))
+
+#define AVAILABLE_DEVICE(status, sstatus) \
+	(!strcmp(status, "okay") && !strcmp(sstatus, "okay"))
+
+static int device_get_flags(const void *fdt, int dev, unsigned long *flags)
+{
+	const char *status, *sstatus, *name;
+
+	status = fdt_getprop(fdt, dev, "status", NULL);
+	if (!status)
+		status = "okay";
+
+	sstatus = fdt_getprop(fdt, dev, "secure-status", NULL);
+	if (!sstatus)
+		sstatus = status;
+
+	*flags = SBI_DOMAIN_MEMREGION_MMIO;
+
+	if (SECURE_DEVICE(status, sstatus) ||
+	    DISABLED_DEVICE(status, sstatus)) {
+		*flags |= (SBI_DOMAIN_MEMREGION_M_READABLE |
+			  SBI_DOMAIN_MEMREGION_M_WRITABLE);
+	} else if (NONSECURE_DEVICE(status, sstatus)) {
+		*flags |= (SBI_DOMAIN_MEMREGION_SU_READABLE |
+			  SBI_DOMAIN_MEMREGION_SU_WRITABLE);
+	} else if (AVAILABLE_DEVICE(status, sstatus)) {
+		*flags |= (SBI_DOMAIN_MEMREGION_M_READABLE |
+			  SBI_DOMAIN_MEMREGION_M_WRITABLE |
+			  SBI_DOMAIN_MEMREGION_SU_READABLE |
+			  SBI_DOMAIN_MEMREGION_SU_WRITABLE);
+	} else {
+		name = fdt_get_name(fdt, dev, NULL);
+		if (name) {
+			sbi_printf("%s: invalid security specification "
+				   "for device %s\n", __func__ , name);
+		} else {
+			sbi_printf("%s: invalid security specification\n",
+				   __func__);
+		}
+
+		return SBI_EINVAL;
+	}
+
+	return SBI_OK;
+}
+
+static int create_regions_for_devices()
+{
+	int soc, dev, ret, i;
+	uint64_t base, size;
+	unsigned long flags;
+
+	struct sbi_domain_memregion reg;
+
+	const void *fdt = fdt_get_address();
+	soc = fdt_path_offset(fdt, "/soc");
+	if (soc < 0) {
+		return SBI_EINVAL;
+	}
+
+	fdt_for_each_subnode(dev, fdt, soc) {
+		// Find all devices with MMIO ranges
+		if (fdt_get_property(fdt, dev, "reg", NULL)) {
+			// Find permissions
+			ret = device_get_flags(fdt, dev, &flags);
+			if (ret < 0) {
+				return ret;
+			}
+
+			i = 0;
+			while(1) {
+				ret = fdt_get_node_addr_size(fdt, dev, i++,
+							     &base, &size);
+				if (ret < 0) {
+					break;
+				}
+
+				sbi_domain_memregion_init(base, size, flags, &reg);
+				ret = sbi_domain_root_add_memregion(&reg);
+				if(ret < 0) {
+					return ret;
+				}
+			}
+		}
+	}
+
+	return 0;
+}
+
+int sbi_smmtt_init(struct sbi_scratch *scratch, bool cold_boot)
+{
+	int rc;
+	if (!sbi_hart_has_extension(scratch, SBI_HART_EXT_SMMTT)) {
+		// Nothing to do
+		return SBI_OK;
+	}
+
+	if (cold_boot) {
+		rc = setup_table_memory();
+		if (rc < 0)
+			return rc;
+
+		rc = create_regions_for_devices();
+		if (rc < 0)
+			return rc;
+	}
 
 	return SBI_OK;
 }

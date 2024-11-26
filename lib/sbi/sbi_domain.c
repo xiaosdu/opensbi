@@ -116,7 +116,7 @@ int sanitize_domain(struct sbi_domain *dom)
 		}
 	}
 
-	rc = sbi_memregion_sanitize(dom, SBI_ISOLATION_UNKNOWN);
+	rc = sbi_domain_memregion_sanitize(dom, SBI_ISOLATION_UNKNOWN);
 	if (rc) {
 		sbi_printf("%s: %s has unsanitizable regions\n",
 			   __func__, dom->name);

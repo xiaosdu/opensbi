@@ -275,7 +275,7 @@ static int memregion_sanitize(struct sbi_domain *dom,
 	return SBI_OK;
 }
 
-int sbi_memregion_sanitize(struct sbi_domain *dom,
+int sbi_domain_memregion_sanitize(struct sbi_domain *dom,
 			   enum sbi_isolation_method type)
 {
 	int count, nmerged;
