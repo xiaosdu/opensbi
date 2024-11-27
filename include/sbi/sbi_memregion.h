@@ -196,4 +196,7 @@ bool sbi_domain_check_addr_range(const struct sbi_domain *dom,
 				 unsigned long mode,
 				 unsigned long access_flags);
 
+/** Dump domain memregion details on the console */
+void sbi_domain_dump_memregions(const struct sbi_domain *dom, const char *suffix);
+
 #endif
