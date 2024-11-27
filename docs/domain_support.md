@@ -24,10 +24,8 @@ Domain Memory Region
 A domain memory region is represented by **struct sbi_domain_memregion** in
 OpenSBI and has following details:
 
-* **order** - The size of a memory region is **2 ^ order** where **order**
-  must be **3 <= order <= __riscv_xlen**
-* **base** - The base address of a memory region is **2 ^ order**
-  aligned start address
+* **size** - The size of a memory region, where the maximum size is encoded
+* **base** - The base address of a memory region.
 * **flags** - The flags of a memory region represent memory type (i.e.
   RAM or MMIO) and allowed accesses (i.e. READ, WRITE, EXECUTE, etc.)
 
@@ -136,16 +134,24 @@ The DT properties of a domain memory region DT node are as follows:
 
 * **compatible** (Mandatory) - The compatible string of the domain memory
   region. This DT property should have value *"opensbi,domain,memregion"*
-* **base** (Mandatory) - The base address of the domain memory region. This
-  DT property should have a **2 ^ order** aligned 64 bit address (i.e. two
-  DT cells).
-* **order** (Mandatory) - The order of the domain memory region. This DT
-  property should have a 32 bit value (i.e. one DT cell) in the range
-  **3 <= order <= __riscv_xlen**.
+  * **base** (Mandatory) - The base address of the domain memory region. If
+  **order** is specified (see below), this DT property should have a
+  **2 ^ order** aligned 64 bit address (i.e. two DT cells). Otherwise, if
+  **size** is specified (see below), this DT property should have a 64 bit
+  address (i.e. two DT cells).
 * **mmio** (Optional) - A boolean flag representing whether the domain
   memory region is a memory-mapped I/O (MMIO) region.
 * **devices** (Optional) - The list of device DT node phandles for devices
   which fall under this domain memory region.
+
+Additionally, **one** of the two DT properties **must** be specified:
+* **size** - The size of the domain memory region. This DT property should
+  have a 64 bit value (i.e. two DT cells). The maximum possible size should
+  be encoded as `<0xFFFFFFFF 0xFFFFFFFF>`.
+* **order** - The order of the domain memory region. This DT property should
+  have a 32 bit value (i.e. one DT cell) in the range **3 <= order <= __riscv_xlen**.
+  This property is kept for compatibility purposes; new device trees should
+  use the **size** property instead.
 
 ### Domain Instance Node
 
@@ -233,6 +239,7 @@ be done:
         opensbi-domains {
             compatible = "opensbi,domain,config";
 
+            /* Region using "order" property rather than size */
             tmem: tmem {
                 compatible = "opensbi,domain,memregion";
                 base = <0x0 0x80100000>;
@@ -242,7 +249,7 @@ be done:
             tuart: tuart {
                 compatible = "opensbi,domain,memregion";
                 base = <0x0 0x10011000>;
-                order = <12>;
+                size = <0x0 0x1000>;
                 mmio;
                 devices = <&uart1>;
             };
@@ -250,7 +257,7 @@ be done:
             allmem: allmem {
                 compatible = "opensbi,domain,memregion";
                 base = <0x0 0x0>;
-                order = <64>;
+                size = <0xFFFFFFFF 0xFFFFFFFF>;
             };
 
             tdomain: trusted-domain {

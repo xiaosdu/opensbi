@@ -112,7 +112,6 @@ static int sanitize_domain(struct sbi_domain *dom)
 		}
 	}
 
-
 	/* Check memory regions, Count memory regions, Check presence of firmware regions
 	Sort the memory regions, Remove covered regions,  */
 	rc = sbi_domain_memregions_sanitize(dom);
@@ -121,7 +120,6 @@ static int sanitize_domain(struct sbi_domain *dom)
 			   __func__, dom->name);
 		return rc;
 	}
-
 
 	/*
 	 * We don't need to check boot HART id of domain because if boot
@@ -309,7 +307,7 @@ static int root_add_memregion(const struct sbi_domain_memregion *reg)
 	nreg = &root.regions[root_memregs_count];
 	sbi_memcpy(nreg, reg, sizeof(*reg));
 	root_memregs_count++;
-	root.regions[root_memregs_count].order = 0;
+	root.regions[root_memregs_count].size = 0;
 
 	/* Sort and optimize root regions */
 	do {
@@ -322,19 +320,18 @@ static int root_add_memregion(const struct sbi_domain_memregion *reg)
 			return rc;
 		}
 
-		/* Merge consecutive memregions with same order and flags */
+		/* Merge consecutive memregions with same flags */
 		reg_merged = false;
 		sbi_domain_for_each_memregion(&root, nreg) {
 			nreg1 = nreg + 1;
-			if (!nreg1->order)
+			if (!nreg1->size)
 				continue;
 
-			if (!(nreg->base & (BIT(nreg->order + 1) - 1)) &&
-			    (nreg->base + BIT(nreg->order)) == nreg1->base &&
-			    nreg->order == nreg1->order &&
-			    nreg->flags == nreg1->flags) {
-				nreg->order++;
-				while (nreg1->order) {
+			if ((nreg->base + nreg->size) == nreg1->base && nreg->flags == nreg1->flags)
+			{
+				nreg->size += nreg1->size;
+				while (nreg1->size)
+				{
 					nreg2 = nreg1 + 1;
 					sbi_memcpy(nreg1, nreg2, sizeof(*nreg1));
 					nreg1++;
@@ -519,7 +516,7 @@ int sbi_domain_init(struct sbi_scratch *scratch, u32 cold_hartid)
 				  &root_memregs[root_memregs_count++]);
 
 	/* Root domain memory region end */
-	root_memregs[root_memregs_count].order = 0;
+	root_memregs[root_memregs_count].size = 0;
 
 	/* Root domain boot HART id is same as coldboot HART id */
 	root.boot_hartid = cold_hartid;

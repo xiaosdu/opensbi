@@ -250,10 +250,9 @@ static int __fdt_parse_region(const void *fdt, int domain_offset,
 			      void *opaque)
 {
 	int len;
-	u32 val32;
 	u64 val64;
 	const u32 *val;
-	unsigned long base, order, flags;
+	unsigned long base, size, flags;
 	struct parse_region_data *preg = opaque;
 
 	/*
@@ -281,21 +280,36 @@ static int __fdt_parse_region(const void *fdt, int domain_offset,
 	base = val64;
 
 	/* Read "order" DT property */
-	val = fdt_getprop(fdt, region_offset, "order", &len);
-	if (!val || len != 4)
-		return SBI_EINVAL;
-	val32 = fdt32_to_cpu(*val);
-	if (val32 < 3 || __riscv_xlen < val32)
-		return SBI_EINVAL;
-	order = val32;
+	val = fdt_getprop(fdt, region_offset, "size", &len);
+	if (!val || len != 8) {
+		// Check for older "order" property
+		val = fdt_getprop(fdt, region_offset, "order", &len);
+		if (!val || len != 4) {
+			return SBI_EINVAL;
+		}
+		val64 = fdt32_to_cpu(*val);
+		if (val64 < 3 || __riscv_xlen < val64)
+			return SBI_EINVAL;
+		val64 = BIT(val64);
+	} else {
+		val64 = ((uint64_t) fdt32_to_cpu(val[0])) << 32;
+		val64 |= fdt32_to_cpu(val[1]);
+	}
+	size = val64;
+	// val = fdt_getprop(fdt, region_offset, "order", &len);
+	// if (!val || len != 4)
+	// 	return SBI_EINVAL;
+	// val32 = fdt32_to_cpu(*val);
+	// if (val32 < 3 || __riscv_xlen < val32)
+	// 	return SBI_EINVAL;
+	// order = val32;
 
 	/* Read "mmio" DT property */
 	flags = region_access & SBI_DOMAIN_MEMREGION_ACCESS_MASK;
 	if (fdt_get_property(fdt, region_offset, "mmio", NULL))
 		flags |= SBI_DOMAIN_MEMREGION_MMIO;
 
-	sbi_domain_memregion_init(base, (order == __riscv_xlen) ? ~0UL : BIT(order),
-				  flags, &preg->dom->regions[preg->region_count]);
+	sbi_domain_memregion_init(base, size, flags, &preg->dom->regions[preg->region_count]);
 
 	preg->region_count++;
 

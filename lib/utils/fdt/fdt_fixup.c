@@ -286,7 +286,7 @@ int fdt_reserved_memory_fixup(void *fdt)
 	struct sbi_domain_memregion *reg;
 	struct sbi_domain *dom = sbi_domain_thishart_ptr();
 	unsigned long filtered_base[PMP_COUNT] = { 0 };
-	unsigned char filtered_order[PMP_COUNT] = { 0 };
+	unsigned char filtered_size[PMP_COUNT] = { 0 };
 	unsigned long addr, size;
 	int err, parent, i, j;
 	int na = fdt_address_cells(fdt, 0);
@@ -363,23 +363,23 @@ int fdt_reserved_memory_fixup(void *fdt)
 		addr = reg->base;
 		for (j = 0; j < i; j++) {
 			if (addr == filtered_base[j]
-			    && filtered_order[j] < reg->order) {
+			    && filtered_size[j] < reg->size) {
 				overlap = true;
-				filtered_order[j] = reg->order;
+				filtered_size[j] = reg->size;
 				break;
 			}
 		}
 
 		if (!overlap) {
 			filtered_base[i] = reg->base;
-			filtered_order[i] = reg->order;
+			filtered_size[i] = reg->size;
 			i++;
 		}
 	}
 
 	for (j = 0; j < i; j++) {
 		addr = filtered_base[j];
-		size = 1UL << filtered_order[j];
+		size = filtered_size[j];
 		fdt_resv_memory_update_node(fdt, addr, size, j, parent);
 	}
 

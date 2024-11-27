@@ -14,13 +14,11 @@ enum sbi_domain_access {
 /** Representation of OpenSBI domain memory region */
 struct sbi_domain_memregion {
 	/**
-	 * Size of memory region as power of 2
-	 * It has to be minimum 3 and maximum __riscv_xlen
+	 * Size of memory region. The maximum value is encoded as -1UL
 	 */
-	unsigned long order;
+	unsigned long size;
 	/**
 	 * Base address of memory region
-	 * It must be 2^order aligned address
 	 */
 	unsigned long base;
 	/** Flags representing memory region attributes */
@@ -144,6 +142,10 @@ struct sbi_domain_memregion {
 	unsigned long flags;
 };
 
+#define memregion_start(reg)  \
+    (reg->base);
+#define memregion_end(reg) \
+	(reg->size == -1UL ? -1UL : reg->base + reg->size - 1)
 
 /**
  * Initialize a domain memory region based on it's physical

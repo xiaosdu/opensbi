@@ -76,7 +76,7 @@ extern struct sbi_dlist domain_list;
 
 /** Iterate over each memory region of a domain */
 #define sbi_domain_for_each_memregion(__d, __r) \
-	for ((__r) = (__d)->regions; (__r)->order; (__r)++)
+	for ((__r) = (__d)->regions; (__r)->size; (__r)++)
 
 /**
  * Check whether given HART is assigned to specified domain

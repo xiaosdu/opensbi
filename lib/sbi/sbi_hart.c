@@ -31,6 +31,11 @@ void (*sbi_hart_expected_trap)(void) = &__sbi_expected_trap;
 
 static unsigned long hart_features_offset;
 
+static inline bool pmp_is_power_of_two(unsigned long order, unsigned long size)
+{
+	return order == __riscv_xlen ? true : BIT(order) == size;
+}
+
 static void mstatus_init(struct sbi_scratch *scratch)
 {
 	int cidx;
@@ -359,14 +364,16 @@ static void sbi_hart_smepmp_set(struct sbi_scratch *scratch,
 				unsigned long pmp_addr_max)
 {
 	unsigned long pmp_addr = reg->base >> PMP_SHIFT;
+	unsigned long order = log2roundup(reg->size);
 
-	if (pmp_log2gran <= reg->order && pmp_addr < pmp_addr_max) {
-		pmp_set(pmp_idx, pmp_flags, reg->base, reg->order);
+	if(pmp_is_power_of_two(order, reg->size) && 
+		pmp_log2gran <= order && pmp_addr < pmp_addr_max) {
+		pmp_set(pmp_idx, pmp_flags, reg->base, order);
 	} else {
 		sbi_printf("Can not configure pmp for domain %s because"
 			   " memory region address 0x%lx or size 0x%lx "
 			   "is not in range.\n", dom->name, reg->base,
-			   reg->order);
+			   reg->size);
 	}
 }
 
@@ -455,6 +462,7 @@ static int sbi_hart_oldpmp_configure(struct sbi_scratch *scratch,
 	unsigned int pmp_idx = 0;
 	unsigned int pmp_flags;
 	unsigned long pmp_addr;
+	unsigned long order;
 
 	sbi_domain_for_each_memregion(dom, reg) {
 		if (pmp_count <= pmp_idx)
@@ -477,13 +485,15 @@ static int sbi_hart_oldpmp_configure(struct sbi_scratch *scratch,
 			pmp_flags |= PMP_X;
 
 		pmp_addr = reg->base >> PMP_SHIFT;
-		if (pmp_log2gran <= reg->order && pmp_addr < pmp_addr_max) {
-			pmp_set(pmp_idx++, pmp_flags, reg->base, reg->order);
+		order = log2roundup(reg->size);
+		if (pmp_is_power_of_two(order, reg->size) &&
+			pmp_log2gran <= order && pmp_addr < pmp_addr_max) {
+			pmp_set(pmp_idx++, pmp_flags, reg->base, order);
 		} else {
 			sbi_printf("Can not configure pmp for domain %s because"
 				   " memory region address 0x%lx or size 0x%lx "
 				   "is not in range.\n", dom->name, reg->base,
-				   reg->order);
+				   reg->size);
 		}
 	}
 
