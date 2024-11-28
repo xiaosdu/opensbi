@@ -118,7 +118,7 @@ static void switch_to_next_domain_context(struct hart_context *ctx,
 	for (int i = 0; i < pmp_count; i++) {
 		pmp_disable(i);
 	}
-	sbi_hart_pmp_configure(scratch);
+	sbi_hart_isolation_configure(scratch);
 
 	/* Save current CSR context and restore target domain's CSR context */
 	ctx->sstatus	= csr_swap(CSR_SSTATUS, dom_ctx->sstatus);

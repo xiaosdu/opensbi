@@ -1,6 +1,13 @@
 #ifndef __SBI_MEMREGION_H__
 #define __SBI_MEMREGION_H__
 
+/** Domain isolation types */
+enum sbi_isolation_method {
+	SBI_ISOLATION_UNKNOWN = 0,
+	SBI_ISOLATION_PMP,
+	SBI_ISOLATION_SMEPMP,
+};
+
 #include <sbi/sbi_domain.h>
 
 /** Domain access types */
@@ -162,13 +169,14 @@ void sbi_domain_memregion_init(unsigned long addr,
 				struct sbi_domain_memregion *reg);
 
 /**
+ * Sanitize a domain's memory regions based on the selected isolation
+ * type. This function should encode any constraints on region
+ * information, such as address alignment or sizing requirements.
  *
- * Traverse all of a domain's memory regions and sanitize
- * them, while making sure they are formatted properly
- *
- * @param dom the domain for which to sanitize regions
+ * @param dom the domain to sanitize
+ * @param type the isolation type to apply
  */
-int sbi_domain_memregions_sanitize(struct sbi_domain *dom);
+int sbi_domain_memregions_sanitize(struct sbi_domain *dom, enum sbi_isolation_method type);
 
 /**
  * Check whether we can access specified address for given mode and

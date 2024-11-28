@@ -38,6 +38,8 @@ struct sbi_domain {
 	const struct sbi_hartmask *possible_harts;
 	/** Array of memory regions terminated by a region with order zero */
 	struct sbi_domain_memregion *regions;
+	/** Current isolation mode */
+	enum sbi_isolation_method isol_mode;
 	/** HART id of the HART booting this domain */
 	u32 boot_hartid;
 	/** Arg1 (or 'a1' register) of next booting stage for this domain */

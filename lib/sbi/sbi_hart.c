@@ -382,9 +382,15 @@ static int sbi_hart_smepmp_configure(struct sbi_scratch *scratch,
 				     unsigned int pmp_log2gran,
 				     unsigned long pmp_addr_max)
 {
+	int rc;
 	struct sbi_domain_memregion *reg;
 	struct sbi_domain *dom = sbi_domain_thishart_ptr();
 	unsigned int pmp_idx, pmp_flags;
+
+	rc = sbi_domain_memregions_sanitize(dom, SBI_ISOLATION_SMEPMP);
+	if (rc < 0) {
+		return rc;
+	}
 
 	/*
 	 * Set the RLB so that, we can write to PMP entries without
@@ -457,12 +463,18 @@ static int sbi_hart_oldpmp_configure(struct sbi_scratch *scratch,
 				     unsigned int pmp_log2gran,
 				     unsigned long pmp_addr_max)
 {
+	int rc;
 	struct sbi_domain_memregion *reg;
 	struct sbi_domain *dom = sbi_domain_thishart_ptr();
 	unsigned int pmp_idx = 0;
 	unsigned int pmp_flags;
 	unsigned long pmp_addr;
 	unsigned long order;
+
+	rc = sbi_domain_memregions_sanitize(dom, SBI_ISOLATION_PMP);
+	if (rc < 0) {
+		return rc;
+	}
 
 	sbi_domain_for_each_memregion(dom, reg) {
 		if (pmp_count <= pmp_idx)
@@ -543,7 +555,7 @@ int sbi_hart_unmap_saddr(void)
 	return pmp_disable(SBI_SMEPMP_RESV_ENTRY);
 }
 
-int sbi_hart_pmp_configure(struct sbi_scratch *scratch)
+int sbi_hart_isolation_configure(struct sbi_scratch *scratch)
 {
 	int rc;
 	unsigned int pmp_bits, pmp_log2gran;
@@ -567,7 +579,7 @@ int sbi_hart_pmp_configure(struct sbi_scratch *scratch)
 	/*
 	 * As per section 3.7.2 of privileged specification v1.12,
 	 * virtual address translations can be speculatively performed
-	 * (even before actual access). These, along with PMP traslations,
+	 * (even before actual access). These, along with PMP translations,
 	 * can be cached. This can pose a problem with CPU hotplug
 	 * and non-retentive suspend scenario because PMP states are
 	 * not preserved.
