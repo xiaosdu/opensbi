@@ -17,6 +17,7 @@
 #include <sbi/sbi_csr_detect.h>
 #include <sbi/sbi_error.h>
 #include <sbi/sbi_hart.h>
+#include <sbi/sbi_smmtt.h>
 #include <sbi/sbi_math.h>
 #include <sbi/sbi_platform.h>
 #include <sbi/sbi_pmu.h>
@@ -449,6 +450,10 @@ static int sbi_hart_smepmp_configure(struct sbi_scratch *scratch,
 		sbi_hart_smepmp_set(scratch, dom, reg, pmp_idx++, pmp_flags,
 				    pmp_log2gran, pmp_addr_max);
 	}
+	
+	if (sbi_hart_has_extension(scratch, SBI_HART_EXT_SMSDID)) {
+		mttp_set(SMMTT_BARE, dom->index, 0);
+	}
 
 	/*
 	 * All entries are programmed.
@@ -507,6 +512,10 @@ static int sbi_hart_oldpmp_configure(struct sbi_scratch *scratch,
 				   "is not in range.\n", dom->name, reg->base,
 				   reg->size);
 		}
+	}
+
+	if (sbi_hart_has_extension(scratch, SBI_HART_EXT_SMSDID)) {
+		mttp_set(SMMTT_BARE, dom->index, 0);
 	}
 
 	return 0;
@@ -816,6 +825,7 @@ static int hart_detect_features(struct sbi_scratch *scratch)
 	sbi_memset(hfeatures->extensions, 0, sizeof(hfeatures->extensions));
 	hfeatures->pmp_count = 0;
 	hfeatures->mhpm_mask = 0;
+	hfeatures->sdidlen = 0;
 	hfeatures->priv_version = SBI_HART_PRIV_VER_UNKNOWN;
 
 #define __check_hpm_csr(__csr, __mask) 					  \
@@ -960,6 +970,10 @@ __pmp_skip:
 			CSR_TSELECT, SBI_HART_EXT_SDTRIG);
 	__check_ext_csr(SBI_HART_PRIV_VER_UNKNOWN,
 			CSR_MTTP, SBI_HART_EXT_SMSDID);
+
+	if(sbi_hart_has_extension(scratch, SBI_HART_EXT_SMSDID)) {
+		hfeatures->sdidlen = mttp_get_sdidlen();
+	}
 
 #undef __check_ext_csr
 

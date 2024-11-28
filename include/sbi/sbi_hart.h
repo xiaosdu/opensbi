@@ -75,7 +75,7 @@ enum sbi_hart_extensions {
 	SBI_HART_EXT_ZICFISS,
 	/** Hart has Ssdbltrp extension */
 	SBI_HART_EXT_SSDBLTRP,
-	/** Hart has Smmtt extension */
+	/** Hart has Smsdid extension */
 	SBI_HART_EXT_SMSDID,
 
 	/** Maximum index of Hart extension */
@@ -113,6 +113,7 @@ struct sbi_hart_features {
 	unsigned int pmp_log2gran;
 	unsigned int mhpm_mask;
 	unsigned int mhpm_bits;
+	unsigned int sdidlen;
 };
 
 struct sbi_scratch;
