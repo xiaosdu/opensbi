@@ -4,6 +4,66 @@
 #include <sbi/sbi_error.h>
 #include <sbi/sbi_string.h>
 
+/** Check if regionA should be placed before regionB */
+static bool is_region_before(const struct sbi_domain_memregion *regA,
+			     const struct sbi_domain_memregion *regB)
+{
+    if (!regA->size)
+		return false;
+	if (!regB->size)
+		return true;
+	if (regA->size < regB->size)
+		return true;
+	if ((regA->size == regB->size) &&
+	    (regA->base < regB->base))
+		return true;
+
+    return false;
+}
+
+static void swap_region(struct sbi_domain_memregion* reg1,
+			struct sbi_domain_memregion* reg2)
+{
+	struct sbi_domain_memregion treg;
+
+	sbi_memcpy(&treg, reg1, sizeof(treg));
+	sbi_memcpy(reg1, reg2, sizeof(treg));
+	sbi_memcpy(reg2, &treg, sizeof(treg));
+}
+
+/** Check if regionA is sub-region of regionB */
+static bool is_region_subset(const struct sbi_domain_memregion *regA,
+			     const struct sbi_domain_memregion *regB)
+{
+	ulong regA_start = regA->base;
+	ulong regA_end = regA->base + regA->size;
+	ulong regB_start = regB->base;
+	ulong regB_end = regB->base + regB->size;
+
+	if ((regB_start <= regA_start) &&
+	    (regA_start < regB_end) &&
+	    (regB_start < regA_end) &&
+	    (regA_end <= regB_end))
+		return true;
+
+	return false;
+}
+
+/** Check if regionA can be replaced by regionB */
+static bool is_region_compatible(const struct sbi_domain_memregion *regA,
+				 const struct sbi_domain_memregion *regB)
+{
+	if (is_region_subset(regA, regB) && regA->flags == regB->flags)
+		return true;
+
+	return false;
+}
+
+static void clear_region(struct sbi_domain_memregion* reg)
+{
+	sbi_memset(reg, 0x0, sizeof(*reg));
+}
+
 void sbi_domain_memregion_init(unsigned long addr,
 				unsigned long size,
 				unsigned long flags,
@@ -33,6 +93,79 @@ void sbi_domain_memregion_init(unsigned long addr,
 	}
 }
 
+static void sort_memregions(struct sbi_domain *dom, int count)
+{
+	int i, j;
+	struct sbi_domain_memregion *reg, *reg1;
+
+	/* Sort the memory regions */
+	for (i = 0; i < (count - 1); i++) {
+		reg = &dom->regions[i];
+		for (j = i + 1; j < count; j++) {
+			reg1 = &dom->regions[j];
+
+			if (!is_region_before(reg1, reg))
+				continue;
+
+			swap_region(reg, reg1);
+		}
+	}	
+}
+
+static void overlap_memregions(struct sbi_domain *dom, int count)
+{
+	int i = 0, j;
+	bool is_covered;
+	struct sbi_domain_memregion *reg, *reg1;
+
+	/* Remove covered regions */
+	while(i < (count - 1)) {
+		is_covered = false;
+		reg = &dom->regions[i];
+
+		for (j = i + 1; j < count; j++) {
+			reg1 = &dom->regions[j];
+
+			if (is_region_compatible(reg, reg1)) {
+				is_covered = true;
+				break;
+			}
+		}
+
+		/* find a region is superset of reg, remove reg */
+		if (is_covered) {
+			for (j = i; j < (count - 1); j++)
+				swap_region(&dom->regions[j],
+					    &dom->regions[j + 1]);
+			clear_region(&dom->regions[count - 1]);
+			count--;
+		} else
+			i++;
+	}
+}
+
+/* Merge consecutive memregions with same flags */
+static void merge_memregions(struct sbi_domain *dom, int *nmerged)
+{
+	struct sbi_domain_memregion *reg, *reg1, *reg2;
+	/* Merge consecutive memregions with same flags */
+	*nmerged = 0;
+	sbi_domain_for_each_memregion(dom, reg) {
+		reg1 = reg + 1;
+		if (!reg1->size)
+			continue;
+		if ((reg->base + reg->size) == reg1->base &&
+		    reg->flags == reg1->flags) {
+			reg->size += reg1->size;
+			while (reg1->size) {
+				reg2 = reg1 + 1;
+				sbi_memcpy(reg1, reg2, sizeof(*reg1));
+				reg1++;
+			}
+			(*nmerged)++;
+		}
+	}
+}
 
 bool sbi_domain_check_addr(const struct sbi_domain *dom,
 			   unsigned long addr, unsigned long mode,
@@ -99,51 +232,6 @@ static bool is_region_valid(const struct sbi_domain_memregion *reg)
 	return true;
 }
 
-/** Check if regionA is sub-region of regionB */
-static bool is_region_subset(const struct sbi_domain_memregion *regA,
-			     const struct sbi_domain_memregion *regB)
-{
-	ulong regA_start = regA->base;
-	ulong regA_end = regA->base + regA->size;
-	ulong regB_start = regB->base;
-	ulong regB_end = regB->base + regB->size;
-
-	if ((regB_start <= regA_start) &&
-	    (regA_start < regB_end) &&
-	    (regB_start < regA_end) &&
-	    (regA_end <= regB_end))
-		return true;
-
-	return false;
-}
-
-/** Check if regionA can be replaced by regionB */
-static bool is_region_compatible(const struct sbi_domain_memregion *regA,
-				 const struct sbi_domain_memregion *regB)
-{
-	if (is_region_subset(regA, regB) && regA->flags == regB->flags)
-		return true;
-
-	return false;
-}
-
-/** Check if regionA should be placed before regionB */
-static bool is_region_before(const struct sbi_domain_memregion *regA,
-			     const struct sbi_domain_memregion *regB)
-{
-    if (!regA->size)
-		return false;
-	if (!regB->size)
-		return true;
-	if (regA->size < regB->size)
-		return true;
-	if ((regA->size == regB->size) &&
-	    (regA->base < regB->base))
-		return true;
-
-    return false;
-}
-
 static const struct sbi_domain_memregion *find_region(
 						const struct sbi_domain *dom,
 						unsigned long addr)
@@ -181,21 +269,6 @@ static const struct sbi_domain_memregion *find_next_subset_region(
 	return ret;
 }
 
-static void swap_region(struct sbi_domain_memregion* reg1,
-			struct sbi_domain_memregion* reg2)
-{
-	struct sbi_domain_memregion treg;
-
-	sbi_memcpy(&treg, reg1, sizeof(treg));
-	sbi_memcpy(reg1, reg2, sizeof(treg));
-	sbi_memcpy(reg2, &treg, sizeof(treg));
-}
-
-static void clear_region(struct sbi_domain_memregion* reg)
-{
-	sbi_memset(reg, 0x0, sizeof(*reg));
-}
-
 bool sbi_domain_check_addr_range(const struct sbi_domain *dom,
 				 unsigned long addr, unsigned long size,
 				 unsigned long mode,
@@ -229,9 +302,8 @@ bool sbi_domain_check_addr_range(const struct sbi_domain *dom,
 
 int sbi_domain_memregions_sanitize(struct sbi_domain *dom)
 {
-	u32 i, j, count;
-    bool is_covered;
-    struct sbi_domain_memregion *reg, *reg1;
+	int count, nmerged;
+    struct sbi_domain_memregion *reg;
 
     /* Check memory regions */
 	if (!dom->regions) {
@@ -239,6 +311,7 @@ int sbi_domain_memregions_sanitize(struct sbi_domain *dom)
 			   __func__, dom->name);
 		return SBI_EINVAL;
 	}
+
 	sbi_domain_for_each_memregion(dom, reg) {
 		if (!is_region_valid(reg)) {
 			sbi_printf("%s: %s has invalid region base=0x%lx "
@@ -262,43 +335,14 @@ int sbi_domain_memregions_sanitize(struct sbi_domain *dom)
 		return SBI_EINVAL;
 	}
 
-	/* Sort the memory regions */
-	for (i = 0; i < (count - 1); i++) {
-		reg = &dom->regions[i];
-		for (j = i + 1; j < count; j++) {
-			reg1 = &dom->regions[j];
-
-			if (!is_region_before(reg1, reg))
-				continue;
-
-			swap_region(reg, reg1);
-		}
-	}
-
-	/* Remove covered regions */
-	while(i < (count - 1)) {
-		is_covered = false;
-		reg = &dom->regions[i];
-
-		for (j = i + 1; j < count; j++) {
-			reg1 = &dom->regions[j];
-
-			if (is_region_compatible(reg, reg1)) {
-				is_covered = true;
-				break;
-			}
-		}
-
-		/* find a region is superset of reg, remove reg */
-		if (is_covered) {
-			for (j = i; j < (count - 1); j++)
-				swap_region(&dom->regions[j],
-					    &dom->regions[j + 1]);
-			clear_region(&dom->regions[count - 1]);
-			count--;
-		} else
-			i++;
-	}
+	do
+	{
+		/* Sort the memory regions */
+		sort_memregions(dom, count);
+		/* Remove covered regions */
+		overlap_memregions(dom, count);
+		merge_memregions(dom, &nmerged);
+	} while (nmerged);
 
     return SBI_OK;
 }
