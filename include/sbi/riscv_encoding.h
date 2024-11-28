@@ -737,6 +737,9 @@
 #define CSR_MIREG5          		0x356
 #define CSR_MIREG6          		0x357
 
+/* Supervisor domains extension registers */
+#define CSR_MTTP			0x3F0
+
 /* Machine-Level Interrupts (AIA) */
 #define CSR_MTOPEI			0x35c
 #define CSR_MTOPI			0xfb0
