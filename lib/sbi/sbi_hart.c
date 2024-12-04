@@ -720,6 +720,7 @@ const struct sbi_hart_ext_data sbi_hart_ext[] = {
 	__SBI_HART_EXT_DATA(zicfiss, SBI_HART_EXT_ZICFISS),
 	__SBI_HART_EXT_DATA(ssdbltrp, SBI_HART_EXT_SSDBLTRP),
 	__SBI_HART_EXT_DATA(smsdid, SBI_HART_EXT_SMSDID),
+	__SBI_HART_EXT_DATA(smmtt, SBI_HART_EXT_SMMTT),
 };
 
 _Static_assert(SBI_HART_EXT_MAX == array_size(sbi_hart_ext),
@@ -815,6 +816,7 @@ static int hart_detect_features(struct sbi_scratch *scratch)
 		sbi_scratch_offset_ptr(scratch, hart_features_offset);
 	unsigned long val, oldval;
 	bool has_zicntr = false;
+	smmtt_mode_t mode, check;
 	int rc;
 
 	/* If hart features already detected then do nothing */
@@ -973,6 +975,21 @@ __pmp_skip:
 
 	if(sbi_hart_has_extension(scratch, SBI_HART_EXT_SMSDID)) {
 		hfeatures->sdidlen = mttp_get_sdidlen();
+
+		/* Detect support SMMTT modes */
+		for (mode = SMMTT_BARE + 1; mode < SMMTT_MAX; mode++)
+		{
+			mttp_get(&check, NULL, NULL);
+
+			if (check == mode)
+			{
+				__set_bit(mode, hfeatures->smmtt_supported_modes);
+
+				/* support at least one mode*/
+				__sbi_hart_update_extension(
+					hfeatures, SBI_HART_EXT_SMMTT, true);
+			}
+		}
 	}
 
 #undef __check_ext_csr

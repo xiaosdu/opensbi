@@ -7,7 +7,7 @@
 
 #if __riscv_xlen == 32
 #define __SMMTT32
-#else __riscv_xlen == 64
+#else 
 #define __SMMTT64
 #endif
 
@@ -22,7 +22,7 @@ typedef enum {
     SMMTT_56,
 #endif
     SMMTT_MAX
-} smmtt_mode;
+} smmtt_mode_t;
 
 #define MTTP32_MODE   _UL(0xC0000000)
 #define MTTP32_SDID   _UL(0x3F000000)

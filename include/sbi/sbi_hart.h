@@ -12,6 +12,7 @@
 
 #include <sbi/sbi_types.h>
 #include <sbi/sbi_bitops.h>
+#include <sbi/sbi_smmtt.h>
 
 /** Possible privileged specification versions of a hart */
 enum sbi_hart_priv_versions {
@@ -77,6 +78,8 @@ enum sbi_hart_extensions {
 	SBI_HART_EXT_SSDBLTRP,
 	/** Hart has Smsdid extension */
 	SBI_HART_EXT_SMSDID,
+	/** Hart has Smmtt extension */
+	SBI_HART_EXT_SMMTT,
 
 	/** Maximum index of Hart extension */
 	SBI_HART_EXT_MAX,
@@ -114,6 +117,7 @@ struct sbi_hart_features {
 	unsigned int mhpm_mask;
 	unsigned int mhpm_bits;
 	unsigned int sdidlen;
+	unsigned long smmtt_supported_modes[BITS_TO_LONGS(SMMTT_MAX)];
 };
 
 struct sbi_scratch;
