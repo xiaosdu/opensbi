@@ -451,10 +451,6 @@ static int sbi_hart_smepmp_configure(struct sbi_scratch *scratch,
 				    pmp_log2gran, pmp_addr_max);
 	}
 	
-	if (sbi_hart_has_extension(scratch, SBI_HART_EXT_SMSDID)) {
-		mttp_set(SMMTT_BARE, dom->index, 0);
-	}
-
 	/*
 	 * All entries are programmed.
 	 * Keep the RLB bit so that dynamic mappings can be done.
@@ -512,10 +508,6 @@ static int sbi_hart_oldpmp_configure(struct sbi_scratch *scratch,
 				   "is not in range.\n", dom->name, reg->base,
 				   reg->size);
 		}
-	}
-
-	if (sbi_hart_has_extension(scratch, SBI_HART_EXT_SMSDID)) {
-		mttp_set(SMMTT_BARE, dom->index, 0);
 	}
 
 	return 0;
