@@ -28,21 +28,20 @@
 		compatible = "qemu,platform\0simple-bus";
 	};
 
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x00 0x80000000 0x01 0x00>;
+	};
 	reserved-memory {
         #address-cells = <2>;
         #size-cells = <2>;
         ranges;
 
         smmtt_tables {
-            reg = <0x00000000 0x90000000 0x00000000 0x4000000>; // base=0x90000000, size=0x4000000
+            reg = <0x00000000 0x84000000 0x00000000 0x4000000>; // base=0x90000000, size=0x4000000
             no-map;
         };
     };
-
-	memory@80000000 {
-		device_type = "memory";
-		reg = <0x00 0x80000000 0x01 0x00>;
-	};
 
 	cpus {
 		#address-cells = <0x01>;
@@ -126,47 +125,17 @@
 	};
 
 	chosen {
-		bootargs = "root=/dev/vda ro console=ttyS0";
+		bootargs = "root=/dev/nvme0n1";
 		stdout-path = "/soc/serial@10000000";
-		rng-seed = <0x9454ecad 0xdd9c38dd 0x8103ddf5 0x4e835b8b 0xcecb24f8 0x2324dc1e 0x95028933 0x5c4f962>;
+		rng-seed = <0xe16bde29 0xf674ad8b 0x54410b04 0x4819feb1 0x4d4589e0 0x47017a10 0xdd95e1da 0x7781c087>;
 
 		opensbi-domains {
 			compatible = "opensbi,domain,config";
 
-			test_l1 {
-				phandle = <0x8005>;
-				size = <0x00 0x1000>;
-				base = <0x00 0xb8000000>;
-				compatible = "opensbi,domain,memregion";
-			};
-
-			test_oneg {
-				phandle = <0x8004>;
-				size = <0x00 0x40000000>;
-				base = <0x00 0xc0000000>;
-				compatible = "opensbi,domain,memregion";
-			};
-
-			uart {
-				phandle = <0x8003>;
-				devices = <0x2800000>;
-				mmio;
-				size = <0x00 0x1000>;
-				base = <0x00 0x10000000>;
-				compatible = "opensbi,domain,memregion";
-			};
-
-			test_xm {
-				phandle = <0x8001>;
-				size = <0x00 0x400000>;
-				base = <0x00 0xb0000000>;
-				compatible = "opensbi,domain,memregion";
-			};
-
-			mem {
+			smmtt-tables {
 				phandle = <0x8000>;
-				order = <0x1a>;
-				base = <0x00 0xbc000000>;
+				size = <0x00 0x4000000>;
+				base = <0x00 0x84000000>;
 				compatible = "opensbi,domain,memregion";
 			};
 		};
@@ -186,7 +155,6 @@
 		};
 
 		serial@10000000 {
-			phandle = <0x8002>;
 			interrupts = <0x0a>;
 			interrupt-parent = <0x05>;
 			clock-frequency = <0x384000>;

@@ -996,6 +996,7 @@ __pmp_skip:
 		/* Detect support SMMTT modes */
 		for (mode = SMMTT_BARE + 1; mode < SMMTT_MAX; mode++)
 		{
+			mttp_set(mode, 0, 0);
 			mttp_get(&check, NULL, NULL);
 
 			if (check == mode)

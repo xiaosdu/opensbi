@@ -367,7 +367,7 @@ static void __noreturn init_coldboot(struct sbi_scratch *scratch, u32 hartid)
 	 */
 	rc = sbi_hart_isolation_configure(scratch);
 	if (rc) {
-		sbi_printf("%s: PMP configure failed (error %d)\n",
+		sbi_printf("%s: isolation configure failed (error %d)\n",
 			   __func__, rc);
 		sbi_hart_hang();
 	}
