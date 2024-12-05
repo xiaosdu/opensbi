@@ -33,12 +33,12 @@
         #size-cells = <2>;
         ranges;
 
-        smmtt_tables: memory@84000000 {
+        smmtt_tables {
             reg = <0x00000000 0x84000000 0x00000000 0x4000000>; // base=0x90000000, size=0x4000000
             no-map;
         };
     };
-	
+
 	memory@80000000 {
 		device_type = "memory";
 		reg = <0x00 0x80000000 0x01 0x00>;
