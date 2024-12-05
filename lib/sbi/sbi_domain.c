@@ -18,6 +18,8 @@
 #include <sbi/sbi_platform.h>
 #include <sbi/sbi_scratch.h>
 #include <sbi/sbi_string.h>
+#include <libfdt.h>
+#include <sbi_utils/fdt/fdt_helper.h>
 
 SBI_LIST_HEAD(domain_list);
 
@@ -296,11 +298,9 @@ int sbi_domain_register(struct sbi_domain *dom,
 	return 0;
 }
 
-static int root_add_memregion(const struct sbi_domain_memregion *reg)
+int sbi_domain_root_add_memregion(const struct sbi_domain_memregion *reg)
 {
 	int rc;
-	// bool reg_merged;
-	// struct sbi_domain_memregion *nreg, *nreg1, *nreg2;
 	struct sbi_domain_memregion *nreg;
 
 	/* Sanity checks */
@@ -308,18 +308,12 @@ static int root_add_memregion(const struct sbi_domain_memregion *reg)
 	    (ROOT_REGION_MAX <= root_memregs_count))
 		return SBI_EINVAL;
 
-	// /* Check whether compatible region exists for the new one */
-	// sbi_domain_for_each_memregion(&root, nreg) {
-	// 	if (is_region_compatible(reg, nreg))
-	// 		return 0;
-	// }
-
 	/* Append the memregion to root memregions */
 	nreg = &root.regions[root_memregs_count];
 	sbi_memcpy(nreg, reg, sizeof(*reg));
 	root_memregs_count++;
 	root.regions[root_memregs_count].size = 0;
-	
+
 	/* Sanitize the root domain so that memregions are sorted */
 	rc = sanitize_domain(&root);
 	if (rc) {
@@ -331,6 +325,7 @@ static int root_add_memregion(const struct sbi_domain_memregion *reg)
 
 	return 0;
 }
+
 
 int sbi_domain_root_add_memrange(unsigned long addr, unsigned long size,
 			   unsigned long align, unsigned long region_flags)
@@ -350,7 +345,7 @@ int sbi_domain_root_add_memrange(unsigned long addr, unsigned long size,
 				(end - pos) : align;
 
 		sbi_domain_memregion_init(pos, rsize, region_flags, &reg);
-		rc = root_add_memregion(&reg);
+		rc = sbi_domain_root_add_memregion(&reg);
 		if (rc)
 			return rc;
 		pos += rsize;
@@ -431,6 +426,7 @@ int sbi_domain_init(struct sbi_scratch *scratch, u32 cold_hartid)
 {
 	u32 i;
 	int rc;
+	// uint64_t base, size;
 	struct sbi_hartmask *root_hmask;
 	struct sbi_domain_memregion *root_memregs;
 	const struct sbi_platform *plat = sbi_platform_ptr(scratch);
@@ -496,6 +492,20 @@ int sbi_domain_init(struct sbi_scratch *scratch, u32 cold_hartid)
 	 * have access to SU region while previous entries will allow
 	 * access to M-mode regions.
 	 */
+
+	// rc = fdt_path_offset((const void *)scratch->next_arg1, "/memory");
+	// if (rc < 0) {
+	// 	rc = SBI_ENODEV;
+	// 	goto fail_free_root_hmask;
+	// }
+
+	// fdt_get_node_addr_size((void *)scratch->next_arg1, rc, 0, &base, &size);
+
+	// sbi_domain_memregion_init(base, size,
+	// 		  (SBI_DOMAIN_MEMREGION_SU_READABLE |
+	// 		   SBI_DOMAIN_MEMREGION_SU_WRITABLE |
+	// 		   SBI_DOMAIN_MEMREGION_SU_EXECUTABLE),
+	// 		  &root_memregs[root_memregs_count++]);
 	sbi_domain_memregion_init(0, ~0UL,
 				  (SBI_DOMAIN_MEMREGION_SU_READABLE |
 				   SBI_DOMAIN_MEMREGION_SU_WRITABLE |

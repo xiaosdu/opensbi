@@ -17,6 +17,7 @@
 #include <sbi/sbi_domain_context.h>
 #include <sbi/sbi_domain_data.h>
 #include <sbi/sbi_memregion.h>
+#include <sbi/smmtt_defs.h>
 
 struct sbi_scratch;
 
@@ -40,6 +41,10 @@ struct sbi_domain {
 	struct sbi_domain_memregion *regions;
 	/** Current isolation mode */
 	enum sbi_isolation_method isol_mode;
+	/* Current SMMTT mode*/
+	smmtt_mode_t smmtt_mode;
+	/* SMMTT base table*/
+	void* mtt;
 	/** HART id of the HART booting this domain */
 	u32 boot_hartid;
 	/** Arg1 (or 'a1' register) of next booting stage for this domain */
@@ -126,6 +131,8 @@ int sbi_domain_register(struct sbi_domain *dom,
  */
 int sbi_domain_root_add_memrange(unsigned long addr, unsigned long size,
 			   unsigned long align, unsigned long region_flags);
+
+int sbi_domain_root_add_memregion(const struct sbi_domain_memregion *reg);
 
 /** Finalize domain tables and startup non-root domains */
 int sbi_domain_finalize(struct sbi_scratch *scratch, u32 cold_hartid);

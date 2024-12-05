@@ -6,6 +6,7 @@ enum sbi_isolation_method {
 	SBI_ISOLATION_UNKNOWN = 0,
 	SBI_ISOLATION_PMP,
 	SBI_ISOLATION_SMEPMP,
+	SBI_ISOLATION_SMMTT
 };
 
 #include <sbi/sbi_domain.h>

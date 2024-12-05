@@ -7,7 +7,7 @@
 
 #if __riscv_xlen == 32
 #define __SMMTT32
-#else 
+#else
 #define __SMMTT64
 #endif
 

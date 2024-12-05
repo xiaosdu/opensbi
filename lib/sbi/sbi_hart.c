@@ -293,6 +293,17 @@ unsigned int sbi_hart_mhpm_bits(struct sbi_scratch *scratch)
 	return hfeatures->mhpm_bits;
 }
 
+unsigned int sbi_hart_has_smmtt_mode(struct sbi_scratch *scratch,
+				     smmtt_mode_t mode)
+{
+	struct sbi_hart_features *hfeatures =
+		sbi_scratch_offset_ptr(scratch, hart_features_offset);
+	if (!sbi_hart_has_extension(scratch, SBI_HART_EXT_SMMTT)) {
+		return 0;
+	}
+	return __test_bit(mode, hfeatures->smmtt_supported_modes);
+}
+
 /*
  * Returns Smepmp flags for a given domain and region based on permissions.
  */
@@ -566,16 +577,30 @@ int sbi_hart_isolation_configure(struct sbi_scratch *scratch)
 	if (!pmp_count)
 		return 0;
 
-	pmp_log2gran = sbi_hart_pmp_log2gran(scratch);
-	pmp_bits = sbi_hart_pmp_addrbits(scratch) - 1;
-	pmp_addr_max = (1UL << pmp_bits) | ((1UL << pmp_bits) - 1);
+	// pmp_log2gran = sbi_hart_pmp_log2gran(scratch);
+	// pmp_bits = sbi_hart_pmp_addrbits(scratch) - 1;
+	// pmp_addr_max = (1UL << pmp_bits) | ((1UL << pmp_bits) - 1);
+	if (sbi_hart_has_extension(scratch, SBI_HART_EXT_SMMTT)) {
+		rc = sbi_hart_smmtt_configure(scratch);
+	} else {
+		pmp_log2gran = sbi_hart_pmp_log2gran(scratch);
+		pmp_bits = sbi_hart_pmp_addrbits(scratch) - 1;
+		pmp_addr_max = (1UL << pmp_bits) | ((1UL << pmp_bits) - 1);
 
-	if (sbi_hart_has_extension(scratch, SBI_HART_EXT_SMEPMP))
-		rc = sbi_hart_smepmp_configure(scratch, pmp_count,
-						pmp_log2gran, pmp_addr_max);
-	else
-		rc = sbi_hart_oldpmp_configure(scratch, pmp_count,
-						pmp_log2gran, pmp_addr_max);
+	// if (sbi_hart_has_extension(scratch, SBI_HART_EXT_SMEPMP))
+	// 	rc = sbi_hart_smepmp_configure(scratch, pmp_count,
+	// 					pmp_log2gran, pmp_addr_max);
+	// else
+	// 	rc = sbi_hart_oldpmp_configure(scratch, pmp_count,
+	// 					pmp_log2gran, pmp_addr_max);
+		if (sbi_hart_has_extension(scratch, SBI_HART_EXT_SMEPMP))
+			rc = sbi_hart_smepmp_configure(scratch, pmp_count,
+							pmp_log2gran, pmp_addr_max);
+		else
+			rc = sbi_hart_oldpmp_configure(scratch, pmp_count,
+							pmp_log2gran, pmp_addr_max);
+	}
+
 
 	/*
 	 * As per section 3.7.2 of privileged specification v1.12,
