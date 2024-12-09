@@ -126,41 +126,20 @@
 	};
 
 	chosen {
-		bootargs = "root=/dev/vda ro console=ttyS0";
 		stdout-path = "/soc/serial@10000000";
-		rng-seed = <0x9454ecad 0xdd9c38dd 0x8103ddf5 0x4e835b8b 0xcecb24f8 0x2324dc1e 0x95028933 0x5c4f962>;
+		rng-seed = <0x1936090b 0xca942ce0 0x790a8047 0xb6b65101 0x1fe7c3b 0x856d04d9 0x1d54f24b 0x773c2126>;
 
 		opensbi-domains {
 			compatible = "opensbi,domain,config";
 
-			test_l1 {
-				phandle = <0x8005>;
-				size = <0x00 0x1000>;
-				base = <0x00 0xb8000000>;
-				compatible = "opensbi,domain,memregion";
-			};
-
-			test_oneg {
-				phandle = <0x8004>;
-				size = <0x00 0x40000000>;
-				base = <0x00 0xc0000000>;
-				compatible = "opensbi,domain,memregion";
-			};
-
-			uart {
-				phandle = <0x8003>;
-				devices = <0x2800000>;
-				mmio;
-				size = <0x00 0x1000>;
-				base = <0x00 0x10000000>;
-				compatible = "opensbi,domain,memregion";
-			};
-
-			test_xm {
+			domain {
+				next-mode = <0x01>;
+				next-addr = <0x00 0xbc000000>;
+				boot-hart = <0x03>;
+				regions = <0x8000 0x3f>;
+				possible-harts = <0x03 0x01>;
 				phandle = <0x8001>;
-				size = <0x00 0x400000>;
-				base = <0x00 0xb0000000>;
-				compatible = "opensbi,domain,memregion";
+				compatible = "opensbi,domain,instance";
 			};
 
 			mem {
@@ -186,7 +165,6 @@
 		};
 
 		serial@10000000 {
-			phandle = <0x8002>;
 			interrupts = <0x0a>;
 			interrupt-parent = <0x05>;
 			clock-frequency = <0x384000>;

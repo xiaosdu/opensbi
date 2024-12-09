@@ -93,22 +93,6 @@ void sbi_domain_memregion_init(unsigned long base,
 				unsigned long flags,
 				struct sbi_domain_memregion *reg)
 {
-
-	// for (order = log2roundup(size) ; order <= __riscv_xlen; order++) {
-	// 	if (order < __riscv_xlen) {
-	// 		base = addr & ~((1UL << order) - 1UL);
-	// 		if ((base <= addr) &&
-	// 		    (addr < (base + (1UL << order))) &&
-	// 		    (base <= (addr + size - 1UL)) &&
-	// 		    ((addr + size - 1UL) < (base + (1UL << order))))
-	// 			break;
-	// 	} else {
-	// 		base = 0;
-	// 		break;
-	// 	}
-
-	// }
-
 	if (reg) {
 		reg->base = base;
 		reg->size = size;
@@ -406,15 +390,6 @@ int sbi_domain_memregions_sanitize(struct sbi_domain *dom, enum sbi_isolation_me
 			   __func__, dom->name);
 		return SBI_EINVAL;
 	}
-	// sbi_domain_for_each_memregion(dom, reg) {
-	// 	if (!is_region_valid(reg)) {
-	// 		sbi_printf("%s: %s has invalid region base=0x%lx "
-	// 			   "size=%lx flags=0x%lx\n", __func__,
-	// 			   dom->name, reg->base, reg->size,
-	// 			   reg->flags);
-	// 		return SBI_EINVAL;
-	// 	}
-	// }
 
 	/* Count memory regions */
 	count = 0;

@@ -587,12 +587,6 @@ int sbi_hart_isolation_configure(struct sbi_scratch *scratch)
 		pmp_bits = sbi_hart_pmp_addrbits(scratch) - 1;
 		pmp_addr_max = (1UL << pmp_bits) | ((1UL << pmp_bits) - 1);
 
-	// if (sbi_hart_has_extension(scratch, SBI_HART_EXT_SMEPMP))
-	// 	rc = sbi_hart_smepmp_configure(scratch, pmp_count,
-	// 					pmp_log2gran, pmp_addr_max);
-	// else
-	// 	rc = sbi_hart_oldpmp_configure(scratch, pmp_count,
-	// 					pmp_log2gran, pmp_addr_max);
 		if (sbi_hart_has_extension(scratch, SBI_HART_EXT_SMEPMP))
 			rc = sbi_hart_smepmp_configure(scratch, pmp_count,
 							pmp_log2gran, pmp_addr_max);

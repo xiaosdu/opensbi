@@ -557,7 +557,7 @@ void __noreturn sbi_init(struct sbi_scratch *scratch)
 		sbi_hart_hang();
 
 	if (coldboot)
-		init_coldboot(scratch, hartid);
+		init_coldboot(scratch, hartid);		// fenzhi coolboot or warmboot
 	else
 		init_warmboot(scratch, hartid);
 }

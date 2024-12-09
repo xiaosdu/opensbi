@@ -32,13 +32,14 @@
 		device_type = "memory";
 		reg = <0x00 0x80000000 0x01 0x00>;
 	};
+
 	reserved-memory {
         #address-cells = <2>;
         #size-cells = <2>;
         ranges;
 
         smmtt_tables {
-            reg = <0x00000000 0x84000000 0x00000000 0x4000000>; // base=0x90000000, size=0x4000000
+            reg = <0x00000000 0x90000000 0x00000000 0x4000000>; // base=0x90000000, size=0x4000000
             no-map;
         };
     };
@@ -125,17 +126,26 @@
 	};
 
 	chosen {
-		bootargs = "root=/dev/nvme0n1";
 		stdout-path = "/soc/serial@10000000";
-		rng-seed = <0xe16bde29 0xf674ad8b 0x54410b04 0x4819feb1 0x4d4589e0 0x47017a10 0xdd95e1da 0x7781c087>;
+		rng-seed = <0xc9ceb2f 0x45ee34 0x28bf0baf 0xa165f3d8 0xb5fcd713 0xd3f0709e 0x383266cc 0x9cbff671>;
 
 		opensbi-domains {
 			compatible = "opensbi,domain,config";
 
-			smmtt-tables {
+			domain {
+				next-mode = <0x01>;
+				next-addr = <0x00 0xbc000000>;
+				boot-hart = <0x03>;
+				regions = <0x8000 0x3f>;
+				possible-harts = <0x03 0x01>;
+				phandle = <0x8001>;
+				compatible = "opensbi,domain,instance";
+			};
+
+			mem {
 				phandle = <0x8000>;
-				size = <0x00 0x4000000>;
-				base = <0x00 0x84000000>;
+				order = <0x1a>;
+				base = <0x00 0xbc000000>;
 				compatible = "opensbi,domain,memregion";
 			};
 		};
